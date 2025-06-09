@@ -1,5 +1,5 @@
 (() => {
-  log("[*] iframe_fuzz — PS5 WebKit DOM heap fuzzer", "info");
+  console.log("[*] iframe_fuzz — PS5 WebKit DOM heap fuzzer");
 
   const HTML_PAYLOAD = `
     <!DOCTYPE html><html>
@@ -21,10 +21,7 @@
   for (let i = 0; i < 300; i++) {
     try {
       const iframe = document.createElement("iframe");
-
-      // Load payload via srcdoc
       iframe.setAttribute("srcdoc", HTML_PAYLOAD);
-
       iframe.style.cssText = `
         width: 10px; height: 10px;
         position: absolute;
@@ -33,36 +30,33 @@
       `;
 
       document.body.appendChild(iframe);
-
-      // Keep a JS reference to test UAF after DOM removal
       trackers.push(iframe);
 
-      // Quickly remove every second iframe
       if (i % 2 === 0) {
         document.body.removeChild(iframe);
       }
 
       if (i % 50 === 0) {
-        log(`[+] Injected ${i}/300 iframes`, "info");
+        console.log(`[+] Injected ${i}/300 iframes`);
       }
-
     } catch (e) {
-      log(`[!] Exception iframe[${i}] : ${e.message}`, "error");
+      console.error(`[!] Exception iframe[${i}] : ${e.message}`);
     }
   }
 
-  // Deferred read: test for UAF or corrupted memory access
   setTimeout(() => {
-    log("[*] Post-removal read (UAF check)", "info");
+    console.log("[*] Post-removal read (UAF check)");
     for (let i = 0; i < trackers.length; i++) {
       const iframe = trackers[i];
       try {
         const bodyText = iframe.contentDocument?.body?.textContent;
         if (!bodyText || bodyText.length < 10) {
-          log(`[!] iframe[${i}] abnormal textContent`, "error");
+          console.error(`[!] iframe[${i}] abnormal textContent`);
         }
       } catch (e) {
-        log(`[!] Exception reading iframe[${i}]: ${e.message}`, "error");
+        console.error(`[!] Exception reading iframe[${i}]: ${e.message}`);
       }
     }
-    log("[✓] End of iframe fuzz",
+    console.log("[✓] End of iframe fuzz");
+  }, 1000);
+})();
